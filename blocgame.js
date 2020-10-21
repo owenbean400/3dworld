@@ -51,6 +51,9 @@ function init() {
     scene.background = new THREE.Color( 0x999999 );
     scene.fog = new THREE.Fog( 0x999999, 0, 750 );
 
+    var light = new THREE.AmbientLight( 0x404040, 1 ); // soft white light
+    scene.add( light );
+
     //light
     var directionalLight = new THREE.DirectionalLight( 0xffffff, 1);
     directionalLight.position.set( 100, 400, 200 );
@@ -130,7 +133,7 @@ function init() {
                 break;
 
             case 32: // space
-                if ( canJump === true ) velocity.y += 350;
+                //if ( canJump === true ) velocity.y += 200;
                 canJump = false;
                 break;
 
@@ -201,46 +204,65 @@ function init() {
 
     raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
 
+    /*
     var planeGeometry = new THREE.PlaneBufferGeometry( 200, 200, 32, 32 );
     var planeMaterial = new THREE.MeshStandardMaterial( { color: 0x00ff00 } )
     var plane = new THREE.Mesh( planeGeometry, planeMaterial );
     plane.rotation.x = -1 * Math.PI / 2;
     plane.receiveShadow = true;
     scene.add( plane );
-
+    */
 
     // objects
-
-    var geo = new THREE.BoxGeometry(10,30,10);
+    /*
+    var geo = new THREE.BoxGeometry(10,30,10, 10, 10, 10);
     var mat = new THREE.MeshStandardMaterial({color: 0xff0000});
     var cube = new THREE.Mesh( geo, mat);
-    var wireframe = new THREE.WireframeGeometry(geo);
-    var line = new THREE.LineSegments(wireframe);
-    line.material.depthTest = false;
-    line.material.opacity = 0.25;
-    line.material.transparent = true;
-    line.position.set(-10, 20, -10);
-    scene.add( line );
-    cube.position.set(-10, 20, -10);
+    cube.position.set(-10, 0, -10);
     cube.castShadow = true;
     scene.add(cube);
-    console.log(cube);
     collidableMeshList.push(cube);
-
-    var geo2 = new THREE.BoxGeometry(5,5,5);
+    */
+    var geo2 = new THREE.CylinderGeometry(5, 5, 8, 12);
     var mat2 = new THREE.MeshStandardMaterial({color: 0xff0000});
     cube2 = new THREE.Mesh( geo2, mat2);
     cube2.position.set(0, 0, 0);
+    cube2.scale.set (1, 2, 1);
     cube2.castShadow = true;
-    //camera.add(cube2);
+    camera.add(cube2);
 
-    var geometryq = new THREE.SphereGeometry( 20, 8, 8 );
+    /*
+    var geometryq = new THREE.ConeGeometry( 5, 3, 6 );
     var materialq = new THREE.MeshStandardMaterial( {color: 0xffff00} );
     var sphere = new THREE.Mesh( geometryq, materialq );
-    sphere.position.set(20, 5, 20);
+    sphere.position.set(20, 0, 20);
     sphere.castShadow = true;
     scene.add( sphere );
     collidableMeshList.push(sphere);
+    */
+
+    var loader = new GLTFLoader();
+
+loader.load( './court.glb', function ( gltf ) {
+
+    var model = gltf.scene;
+    model.rotation.set ( 0, 0, 0);
+    model.scale.set(12, 12, 12);
+    model.position.set(0, -2, 0);
+    model.castShadow = true;
+    model.receiveShadow = true;
+    console.log(model);
+    for(let i = 0; i < model.children.length; i++){
+        model.children[i].castShadow = true;
+        collidableMeshList.push(model.children[i]);
+    }
+    scene.add( model );
+
+}, undefined, function ( error ) {
+
+	console.error( error );
+
+} );
 
     renderer = new THREE.WebGLRenderer( { antialias: true } );
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -313,12 +335,40 @@ function animate() {
             var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
             var collisionResults = ray.intersectObjects( collidableMeshList );
             if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) {
-                //console.log(" Hit ");
-                //console.log("old X:" + prevCameraInfoPositionX + "   new X:"+ camera.position.x);
-                camera.position.x = prevCameraInfoPositionX;
-                camera.position.z = prevCameraInfoPositionZ;
-                camera.position.y = prevCameraInfoPositionY;
-                velocity.y = 0;
+                var errorMargin = 0.5;
+                    console.log(collisionResults);
+                if(collisionResults[0].face.normal.y > Math.abs(collisionResults[0].face.normal.x) && collisionResults[0].face.normal.y > Math.abs(collisionResults[0].face.normal.z)){
+                    camera.position.y = prevCameraInfoPositionY;
+                    console.log("y")
+                    canJump = true;
+                    velocity.y = Math.max(0, velocity.y);
+                    if(Math.abs(collisionResults[0].face.normal.x) == Math.max(Math.abs(collisionResults[0].face.normal.x),Math.abs(collisionResults[0].face.normal.z) + errorMargin * 2)){
+                        camera.position.x = prevCameraInfoPositionX;
+                    }
+                    else if(Math.abs(collisionResults[0].face.normal.z) == Math.max(Math.abs(collisionResults[0].face.normal.x) + errorMargin * 2,Math.abs(collisionResults[0].face.normal.z))){
+                        camera.position.z = prevCameraInfoPositionZ;
+                    }
+                    if(collisionResults[0].face.normal.x > 0){
+                        camera.position.x += (collisionResults[0].face.normal.x * 2);
+                    }
+                    if(collisionResults[0].face.normal.z > 0){
+                        camera.position.z += (collisionResults[0].face.normal.z * 2);
+                    }
+                }
+                else if(Math.abs(collisionResults[0].face.normal.x) == Math.max(Math.abs(collisionResults[0].face.normal.x),Math.abs(collisionResults[0].face.normal.z) + errorMargin)){
+                    console.log("x");
+                    camera.position.x = prevCameraInfoPositionX;
+                    camera.position.z = prevCameraInfoPositionZ;
+                }
+                else if(Math.abs(collisionResults[0].face.normal.z) == Math.max(Math.abs(collisionResults[0].face.normal.x) + errorMargin,Math.abs(collisionResults[0].face.normal.z))){
+                    console.log("z");
+                    camera.position.z = prevCameraInfoPositionZ;
+                }
+                else{
+                    console.log("else");
+                    camera.position.x = prevCameraInfoPositionX;
+                    camera.position.z = prevCameraInfoPositionZ;
+                }
             }
         }
 
