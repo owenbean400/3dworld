@@ -89,6 +89,8 @@ function init() {
     instructions.addEventListener( 'click', function () {
 
         controls.lock();
+        document.getElementById('cursor').style.display = "none";
+
 
     }, false );
 
@@ -96,6 +98,7 @@ function init() {
 
         instructions.style.display = 'none';
         blocker.style.display = 'none';
+        document.getElementById('cursor').style.display = '';
 
     } );
 
@@ -103,6 +106,7 @@ function init() {
 
         blocker.style.display = 'block';
         instructions.style.display = '';
+        document.getElementById('cursor').style.display = "none";
 
     } );
 
