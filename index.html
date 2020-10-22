@@ -80,6 +80,21 @@
         background-color: white;
         padding: 4px 6px;
     }
+    #creator {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-color: black;
+        color: lightgray;
+        padding: 4px 8px;
+    }
+    #creator a{
+        color: lightgray;
+        text-decoration: none;
+    }
+    #creator a:hover{
+        color: white;
+    }
 
 </style>
     </head>
@@ -92,8 +107,8 @@
                 Move: WASD or ARROW KEYS<br />
                 Look: MOVE YOUR MOUSE<br />
                 Main Menu: ESC KEY<br />
-                GRAB BALL: HOLD RIGHT CLICK<br />
-                RELEASE BALL: RELEASE RIGHT CLICK
+                GRAB BALL: HOLD LEFT CLICK<br />
+                RELEASE BALL: RELEASE LEFT CLICK
             </div>
         
         </div>
@@ -104,7 +119,12 @@
             <div id="cursor-right"></div>
         </div>
         <div id="buckets">
+            MOST SHOTS in a Row: <span id="shots-max">0</span><br />
+            Shots Made in Basket in a Row: <span id="shots-row">0</span><br />
             Shots Made in Basket: <span id="buckets-made">0</span>
+        </div>
+        <div id="creator">
+            Created by: Owen G. Bean &nbsp | &nbsp<a target="_blank" href="https://github.com/owenbean400/3dworld">Github Code</a> &nbsp | &nbsp<a target="_blank" href="https://github.com/owenbean400">Github Account</a>
         </div>
         <script type="module" src="./blocgame.js">
         </script>

@@ -6,7 +6,8 @@ var camera, scene, renderer, controls;
 var raycaster;
 
 var basketball;
-var ballVelocityY = 0;
+var ballVelocityX = 0, ballVelocityY = 0, ballVelocityZ = 0 ;
+var launchVelocity = 0;
 var acceleration = -0.1;
 
 var collidableMeshList = [];
@@ -15,11 +16,14 @@ var basketballCollision = [];
 var previousInfoGrabbing;
 var shotsMade = 0;
 var shotAlreadyMadeDown = false;
+var shotsInRow = 0;
+var shotsMax = 0;
 
 var raycasterMouse = new THREE.Raycaster();
 var mouseVector = new THREE.Vector2(0, 0);
 var lookAtBall = false;
 var grabBall = false;
+var ballHitGround = true;
 
 var personTriggerCame;
 var distanceBallCamera;
@@ -156,7 +160,7 @@ function init() {
     document.addEventListener( 'keyup', onKeyUp, false );
     
     var onMouseDown = (event) => {
-        if(event.button == 2 && lookAtBall){
+        if(event.button == 0 && lookAtBall){
             grabBall = true;
             previousInfoGrabbing = {
                 basketballPrevious: {
@@ -184,7 +188,7 @@ function init() {
         }
     }
     var onMouseUp = (event) => {
-        if(event.button == 2 && lookAtBall){
+        if(event.button == 0 && lookAtBall){
             basketball.position.set(
                 grabDisplacementCoord( rotationDisplacementAxis(previousInfoGrabbing.basketballPrevious.distance, camera.getWorldDirection().x, previousInfoGrabbing.cameraPrevious.direction.looking.x), previousInfoGrabbing.basketballPrevious.position.x, camera.position.x, previousInfoGrabbing.cameraPrevious.position.x),
                 grabDisplacementCoord( rotationDisplacementAxis(previousInfoGrabbing.basketballPrevious.distance, camera.getWorldDirection().y, previousInfoGrabbing.cameraPrevious.direction.looking.y), previousInfoGrabbing.basketballPrevious.position.y, camera.position.y, previousInfoGrabbing.cameraPrevious.position.y),
@@ -193,6 +197,10 @@ function init() {
             camera.remove(basketball);
             scene.add(basketball);
             grabBall = false;
+            launchVelocity = ((-1 * (Math.pow((previousInfoGrabbing.basketballPrevious.distance / 50), 2))) + 3 > 0) ? (-1 * (Math.pow((previousInfoGrabbing.basketballPrevious.distance / 50), 2))) + 3 : 0;
+            ballVelocityY = launchVelocity * Math.sin(camera.getWorldDirection().y * (Math.PI / 2));
+            ballVelocityX = (launchVelocity * Math.cos(camera.getWorldDirection().y * (Math.PI / 2))) * camera.getWorldDirection().x;
+            ballVelocityZ = (launchVelocity * Math.cos(camera.getWorldDirection().y * (Math.PI / 2))) * camera.getWorldDirection().z;
         }
     }
     var mouseMove = (event) => {
@@ -357,24 +365,57 @@ function animate() {
 
     if(!grabBall){
         if(basketball.position.y > 2){
+            basketball.position.x += ballVelocityX;
             basketball.position.y += ballVelocityY;
+            basketball.position.z += ballVelocityZ;
             ballVelocityY += acceleration;
+            ballHitGround = false;
         }
         else{
             basketball.position.y = 2;
+            ballVelocityX = 0;
             ballVelocityY = 0;
+            ballVelocityZ = 0;
+            if(!shotAlreadyMadeDown && !ballHitGround){
+                shotsMax = Math.max(shotsMax, shotsInRow);
+                shotsInRow = 0;
+            }
+            ballHitGround = true;
             shotAlreadyMadeDown = false;
         }
         if(!shotAlreadyMadeDown && (withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, -47, 2, 28, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, 43, 2, 28, 47))){
             shotsMade += 1;
-            console.log("shot made");
-            document.getElementById('buckets-made').innerHTML = shotsMade;
             shotAlreadyMadeDown = true;
+            shotsInRow += 1;
+            if(shotsInRow > shotsMax){
+                shotsMax = shotsInRow;
+            }
+            document.getElementById('buckets-made').innerHTML = shotsMade;
+            document.getElementById('shots-row').innerHTML = shotsInRow;
+            document.getElementById('shots-max').innerHTML = shotsMax;
         }
     }
     else{
+        ballVelocityX = 0;
         ballVelocityY = 0;
+        ballVelocityZ = 0;
         shotAlreadyMadeDown = false;
+    }
+    if(outsideBoundingWalls(basketball.position.x, 38, -38)){
+        ballVelocityX *= -1;
+        if(outsideBoundingWalls(basketball.position.x, 42, -42)){
+        ballVelocityX = 0;
+        ballVelocityZ = 0;
+        basketball.position.x = 0;
+        }
+    }
+    if(outsideBoundingWalls(basketball.position.z, 57, -57)){
+        ballVelocityZ *= -1;
+        if(outsideBoundingWalls(basketball.position.z, 61, -61)){
+        ballVelocityX = 0;
+        ballVelocityZ = 0;
+        basketball.position.z = 0;
+        }
     }
 }
 
@@ -398,6 +439,10 @@ function grabDisplacementCoord(rotationDisplacement, prevCoordObject, nowCoordCa
 
 function withinTriggerPoint(px, py, pz, testx1, testy1, testz1, testx2, testy2, testz2){
     return ((px > testx1 && px < testx2) && (py > testy1 && py < testy2) && (pz > testz1 && pz < testz2));
+}
+
+function outsideBoundingWalls(point, test1, test2){
+    return (point > test1 || point < test2);
 }
 
 
