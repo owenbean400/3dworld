@@ -6,269 +6,252 @@ var camera, scene, renderer, controls;
 var raycaster;
 
 var basketball;
-var basketballHeld = false;
-var basketballPrevCords = [];
-var previousCameraGrabBall = [];
-
-var cameraPrevQuat;
+var ballVelocityY = 0;
+var acceleration = -0.1;
 
 var collidableMeshList = [];
 var basketballCollision = [];
 
+var previousInfoGrabbing;
+var shotsMade = 0;
+var shotAlreadyMadeDown = false;
+
 var raycasterMouse = new THREE.Raycaster();
-var mouseVector = new THREE.Vector2();
+var mouseVector = new THREE.Vector2(0, 0);
 var lookAtBall = false;
 var grabBall = false;
 
-var cube2;
+var personTriggerCame;
 var distanceBallCamera;
 
 var moveForward = false;
 var moveBackward = false;
 var moveLeft = false;
 var moveRight = false;
-var canJump = false;
+
+var mouseClickLast;
 
 var prevTime = performance.now();
 var velocity = new THREE.Vector3();
 var direction = new THREE.Vector3();
-var vertex = new THREE.Vector3();
-var color = new THREE.Color();
 
 init();
 animate();
 
 function init() {
-
+    //Camera
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
     camera.position.y = 10;
 
+    //Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color( 0x999999 );
     scene.fog = new THREE.Fog( 0x999999, 0, 750 );
 
+    //Light Global
     var light = new THREE.AmbientLight( 0x404040, 2 ); // soft white light
     scene.add( light );
 
-    //light
+    //Direct Light Global Shadow
     var directionalLight = new THREE.DirectionalLight( 0xffffff, 1);
     directionalLight.position.set( 100, 400, 200 );
     directionalLight.scale.set(100, 100, 100);
     directionalLight.castShadow = true;
-
     directionalLight.shadow.mapSize.width = 2048; 
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0;
     directionalLight.shadow.camera.far = 5000;
     directionalLight.shadow.radius = 10;
     directionalLight.target.position.set( 0, 0, 0 );
-
     directionalLight.shadow.camera.zoom = 1;
     const d = 100;
-
     directionalLight.shadow.camera.left = - d;
     directionalLight.shadow.camera.right = d;
     directionalLight.shadow.camera.top = d;
     directionalLight.shadow.camera.bottom = - d;
-
     var helper = new THREE.CameraHelper( directionalLight.shadow.camera );
     scene.add( helper );
     scene.add( directionalLight );  
 
+    //Pointer Lock
     controls = new PointerLockControls( camera, document.body );
 
+    //HTML ID 
     var blocker = document.getElementById( 'blocker' );
     var instructions = document.getElementById( 'instructions' );
     var crosshair = document.getElementById('cursor');
 
-    instructions.addEventListener( 'click', function () {
-
+    //event listeners
+    instructions.addEventListener( 'click', (event) => {
         controls.lock();
         crosshair.style.display = "none";
-
-
+        mouseClickLast = {
+            x: event.clientX,
+            y: event.clientY
+        }
     }, false );
 
-    controls.addEventListener( 'lock', function () {
-
+    controls.addEventListener( 'lock', () => {
         instructions.style.display = 'none';
         blocker.style.display = 'none';
         crosshair.style.display = '';
-
     } );
 
-    controls.addEventListener( 'unlock', function () {
-
+    controls.addEventListener( 'unlock', () => {
         blocker.style.display = 'block';
         instructions.style.display = '';
         crosshair.style.display = "none";
-
     } );
 
     scene.add( controls.getObject() );
 
-    var onKeyDown = function ( event ) {
-
+    var onKeyDown = (event) => {
         switch ( event.keyCode ) {
-
             case 38: // up
             case 87: // w
                 moveForward = true;
                 break;
-
             case 37: // left
             case 65: // a
                 moveLeft = true;
                 break;
-
             case 40: // down
             case 83: // s
                 moveBackward = true;
                 break;
-
             case 39: // right
             case 68: // d
                 moveRight = true;
                 break;
-
             case 32: // space
-                //if ( canJump === true ) velocity.y += 200;
-                canJump = false;
                 break;
-
         }
-
     };
-
-    var onKeyUp = function ( event ) {
-
+    var onKeyUp = (event) => {
         switch ( event.keyCode ) {
-
             case 38: // up
             case 87: // w
                 moveForward = false;
                 break;
-
             case 37: // left
             case 65: // a
                 moveLeft = false;
                 break;
-
             case 40: // down
             case 83: // s
                 moveBackward = false;
                 break;
-
             case 39: // right
             case 68: // d
                 moveRight = false;
                 break;
             case 90: //z
-                ballShot = true;
-                ballVelocityY = ballVelocity * Math.sin(Math.abs(camera.rotation.z));
-                ballVelocityZ = ballVelocityY / Math.tan(camera.rotation.z);
+                console.log(basketball);
                 break;
-
         }
-
     };
 
+    //event listeners
     document.addEventListener( 'keydown', onKeyDown, false );
     document.addEventListener( 'keyup', onKeyUp, false );
     
-    var onMouseDown = function (event){
+    var onMouseDown = (event) => {
         if(event.button == 2 && lookAtBall){
             grabBall = true;
-            cameraPrevQuat = camera.quaternion.clone();
-            basketballPrevCords.push(basketball.position.x);
-            basketballPrevCords.push(basketball.position.y);
-            basketballPrevCords.push(basketball.position.z);
-            previousCameraGrabBall.push(camera.position.x);
-            previousCameraGrabBall.push(camera.position.y);
-            previousCameraGrabBall.push(camera.position.z);
-            previousCameraGrabBall.push(camera.getWorldDirection());
-            basketballHeld = true;
-            distanceBallCamera = threeDistance(camera.position.x, camera.position.y, camera.position.z, basketball.position.x, basketball.position.y, basketball.position.z);
+            previousInfoGrabbing = {
+                basketballPrevious: {
+                    position: {
+                        x: basketball.position.x,
+                        y: basketball.position.y,
+                        z: basketball.position.z,
+                    },
+                    distance: threeDistance(camera.position.x, camera.position.y, camera.position.z, basketball.position.x, basketball.position.y, basketball.position.z),
+                },
+                cameraPrevious: {
+                    position: {
+                        x: camera.position.x,
+                        y: camera.position.y,
+                        z: camera.position.z,
+                    },
+                    direction: {
+                        looking: camera.getWorldDirection(),
+                    }
+                }
+            }
             scene.remove(basketball);
-            basketball.position.set(0, 0, -1 * distanceBallCamera);
+            basketball.position.set(0, 0, -1 * previousInfoGrabbing.basketballPrevious.distance);
             camera.add(basketball);
         }
     }
-
-    var onMouseUp = function (event) {
+    var onMouseUp = (event) => {
         if(event.button == 2 && lookAtBall){
-            var RotationDisplacementX = distanceBallCamera * (camera.getWorldDirection().x - previousCameraGrabBall[3].x);
-            var RotationDisplacementY = distanceBallCamera * (camera.getWorldDirection().y - previousCameraGrabBall[3].y);
-            var RotationDisplacementZ = distanceBallCamera * (camera.getWorldDirection().z - previousCameraGrabBall[3].z);
-            basketballHeld = false;
-            basketball.position.set(RotationDisplacementX + basketballPrevCords[0] + camera.position.x - previousCameraGrabBall[0], RotationDisplacementY + basketballPrevCords[1] + camera.position.y - previousCameraGrabBall[1], RotationDisplacementZ + basketballPrevCords[2] + camera.position.z - previousCameraGrabBall[2],)
+            basketball.position.set(
+                grabDisplacementCoord( rotationDisplacementAxis(previousInfoGrabbing.basketballPrevious.distance, camera.getWorldDirection().x, previousInfoGrabbing.cameraPrevious.direction.looking.x), previousInfoGrabbing.basketballPrevious.position.x, camera.position.x, previousInfoGrabbing.cameraPrevious.position.x),
+                grabDisplacementCoord( rotationDisplacementAxis(previousInfoGrabbing.basketballPrevious.distance, camera.getWorldDirection().y, previousInfoGrabbing.cameraPrevious.direction.looking.y), previousInfoGrabbing.basketballPrevious.position.y, camera.position.y, previousInfoGrabbing.cameraPrevious.position.y),
+                grabDisplacementCoord( rotationDisplacementAxis(previousInfoGrabbing.basketballPrevious.distance, camera.getWorldDirection().z, previousInfoGrabbing.cameraPrevious.direction.looking.z), previousInfoGrabbing.basketballPrevious.position.z, camera.position.z, previousInfoGrabbing.cameraPrevious.position.z),
+                );
             camera.remove(basketball);
             scene.add(basketball);
             grabBall = false;
-            basketballPrevCords = [];
-            previousCameraGrabBall = [];
         }
     }
-
-    var mouseMove = function (event) {
+    var mouseMove = (event) => {
         event.preventDefault();
-        mouseVector.x = (event.clientX / window.innerWidth ) * 2 - 1;
-        mouseVector.y = - ( event.clientY / window.innerHeight ) * 2 + 0.8;
-        console.log(event.clientY);
-        console.log(mouseVector);
     }
 
+    //event listener mouse
     document.addEventListener( 'mousedown', onMouseDown, false);
     document.addEventListener( 'mouseup', onMouseUp, false);
     document.addEventListener( 'mousemove', mouseMove, false);
 
     raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
 
-    var geo2 = new THREE.CylinderGeometry(5, 5, 8, 12);
-    var mat2 = new THREE.MeshStandardMaterial({color: 0xff0000});
-    cube2 = new THREE.Mesh( geo2, mat2);
-    cube2.position.set(0, 0, 0);
-    cube2.scale.set (1, 2, 1);
-    cube2.castShadow = true;
-    camera.add(cube2);
+    var personTriggerCamGeometry = new THREE.CylinderGeometry(5, 5, 8, 12);
+    var personTriggerCamMaterial = new THREE.MeshStandardMaterial({color: 0xff0000});
+    personTriggerCame = new THREE.Mesh( personTriggerCamGeometry, personTriggerCamMaterial);
+    personTriggerCame.position.set(0, 0, 0);
+    personTriggerCame.scale.set (1, 2, 1);
+    personTriggerCame.castShadow = true;
+    camera.add(personTriggerCame);
 
     var loader = new GLTFLoader();
 
-loader.load( './court.glb', function ( gltf ) {
+    loader.load( './court.glb', function ( gltf ) {
 
-    var model = gltf.scene;
-    model.rotation.set ( 0, 0, 0);
-    model.scale.set(12, 12, 12);
-    model.position.set(0, -2, 0);
-    model.castShadow = true;
-    model.receiveShadow = true;
-    for(let i = 0; i < model.children.length; i++){
-        model.children[i].castShadow = true;
-        model.children[i].receiveShadow = true;
-        collidableMeshList.push(model.children[i]);
-        if(model.children[i].type == "Mesh")
-        basketballCollision.push(model.children[i]);
-    }
-    scene.add( model );
+        var basketballCourt = gltf.scene;
+        basketballCourt.rotation.set ( 0, 0, 0);
+        basketballCourt.scale.set(12, 12, 12);
+        basketballCourt.position.set(0, -2, 0);
+        basketballCourt.castShadow = true;
+        basketballCourt.receiveShadow = true;
+        for(let i = 0; i < basketballCourt.children.length; i++){
+            basketballCourt.children[i].castShadow = true;
+            basketballCourt.children[i].receiveShadow = true;
+            collidableMeshList.push(basketballCourt.children[i]);
+            if(basketballCourt.children[i].type == "Mesh")
+            basketballCollision.push(basketballCourt.children[i]);
+        }
+        scene.add( basketballCourt );
 
-}, undefined, function ( error ) {
+    }, undefined, function ( error ) {
 
-	console.error( error );
+        console.error( error );
 
-} );
-    var geos = new THREE.SphereGeometry( 5, 12, 12 );
-    var mats = new THREE.MeshStandardMaterial( {color: 0xffa500} );
-    basketball = new THREE.Mesh( geos, mats );
-    var wireframe = new THREE.WireframeGeometry( geos );
-    var sline = new THREE.LineSegments( wireframe );
-    sline.material.depthTest = false;
-    sline.material.opacity = 0.02;
-    sline.material.transparent = true;
-    basketball.position.set(5, 6, -20);
+    } );
+
+    var basketballGeography = new THREE.SphereGeometry( 3, 12, 12 );
+    var basketballMaterial = new THREE.MeshStandardMaterial( {color: 0xffa500} );
+    basketball = new THREE.Mesh( basketballGeography, basketballMaterial );
+    var basketballWireframe = new THREE.WireframeGeometry( basketballGeography );
+    var basketballOutlines = new THREE.LineSegments( basketballWireframe );
+    basketballOutlines.material.depthTest = false;
+    basketballOutlines.material.opacity = 0.02;
+    basketballOutlines.material.transparent = true;
+    basketball.position.set(5, 2, -20);
     basketball.castShadow = true;
     basketball.receiveShadow = true;
     scene.add( basketball );
-    basketball.add( sline );
+    basketball.add( basketballOutlines );
 
     renderer = new THREE.WebGLRenderer( { antialias: true } );
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -276,28 +259,23 @@ loader.load( './court.glb', function ( gltf ) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild( renderer.domElement );
-    document.getElementsByTagName("canvas")[0].style.top = 0;
-    document.getElementsByTagName("canvas")[0].style.left = 0;
-
-    //
 
     window.addEventListener( 'resize', onWindowResize, false );
-
 }
 
 function onWindowResize() {
-
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
     renderer.setSize( window.innerWidth, window.innerHeight );
-
 }
 
 function animate() {
-    var prevCameraInfoPositionX = camera.position.x;
-    var prevCameraInfoPositionZ = camera.position.z;
-    var prevCameraInfoPositionY = camera.position.y;
+    var prevCameraInfoPosition = {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+    }
 
     requestAnimationFrame( animate );
 
@@ -314,44 +292,32 @@ function animate() {
 
         direction.z = Number( moveForward ) - Number( moveBackward );
         direction.x = Number( moveRight ) - Number( moveLeft );
-        direction.normalize(); // this ensures consistent movements in all directions
+        direction.normalize();
 
         if ( moveForward || moveBackward ) velocity.z -= direction.z * 400.0 * delta;
         if ( moveLeft || moveRight ) velocity.x -= direction.x * 400.0 * delta;
 
         controls.moveRight( - velocity.x * delta );
         controls.moveForward( - velocity.z * delta );
-
-        controls.getObject().position.y += ( velocity.y * delta ); // new behavior
-
-        if ( controls.getObject().position.y < 10 ) {
-
-            velocity.y = 0;
-            controls.getObject().position.y = 10;
-
-            canJump = true;
-
-        }
         var originPoint = camera.position.clone();
-        for (var vertexIndex = 0; vertexIndex < cube2.geometry.vertices.length; vertexIndex++)
+        for (var vertexIndex = 0; vertexIndex < personTriggerCame.geometry.vertices.length; vertexIndex++)
         {		
-            var localVertex = cube2.geometry.vertices[vertexIndex].clone();
-            var globalVertex = localVertex.applyMatrix4( cube2.matrix );
-            var directionVector = globalVertex.sub( cube2.position );
-            
+            var localVertex = personTriggerCame.geometry.vertices[vertexIndex].clone();
+            var globalVertex = localVertex.applyMatrix4( personTriggerCame.matrix );
+            var directionVector = globalVertex.sub( personTriggerCame.position );
             var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
             var collisionResults = ray.intersectObjects( collidableMeshList );
             if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) {
                 var errorMargin = 0.5;
                 if(collisionResults[0].face.normal.y > Math.abs(collisionResults[0].face.normal.x) && collisionResults[0].face.normal.y > Math.abs(collisionResults[0].face.normal.z)){
-                    camera.position.y = prevCameraInfoPositionY;
+                    camera.position.y = prevCameraInfoPosition.y;
                     canJump = true;
                     velocity.y = Math.max(0, velocity.y);
-                    if(Math.abs(collisionResults[0].face.normal.x) == Math.max(Math.abs(collisionResults[0].face.normal.x),Math.abs(collisionResults[0].face.normal.z) + errorMargin * 2)){
-                        camera.position.x = prevCameraInfoPositionX;
+                    if(faceGreaterThanItself(collisionResults[0].face.normal.x, collisionResults[0].face.normal.z, errorMargin)){
+                        camera.position.x = prevCameraInfoPosition.x;
                     }
-                    else if(Math.abs(collisionResults[0].face.normal.z) == Math.max(Math.abs(collisionResults[0].face.normal.x) + errorMargin * 2,Math.abs(collisionResults[0].face.normal.z))){
-                        camera.position.z = prevCameraInfoPositionZ;
+                    else if(faceGreaterThanItself(collisionResults[0].face.normal.z, collisionResults[0].face.normal.x, errorMargin)){
+                        camera.position.z = prevCameraInfoPosition.z;
                     }
                     if(collisionResults[0].face.normal.x > 0){
                         camera.position.x += (collisionResults[0].face.normal.x * 2);
@@ -360,16 +326,16 @@ function animate() {
                         camera.position.z += (collisionResults[0].face.normal.z * 2);
                     }
                 }
-                else if(Math.abs(collisionResults[0].face.normal.x) == Math.max(Math.abs(collisionResults[0].face.normal.x),Math.abs(collisionResults[0].face.normal.z) + errorMargin)){
-                    camera.position.x = prevCameraInfoPositionX;
-                    camera.position.z = prevCameraInfoPositionZ;
+                else if(faceGreaterThanItself(collisionResults[0].face.normal.x, collisionResults[0].face.normal.z, errorMargin)){
+                    camera.position.x = prevCameraInfoPosition.x;
+                    camera.position.z = prevCameraInfoPosition.z;
                 }
-                else if(Math.abs(collisionResults[0].face.normal.z) == Math.max(Math.abs(collisionResults[0].face.normal.x) + errorMargin,Math.abs(collisionResults[0].face.normal.z))){
-                    camera.position.z = prevCameraInfoPositionZ;
+                else if(faceGreaterThanItself(collisionResults[0].face.normal.z, collisionResults[0].face.normal.x, errorMargin)){
+                    camera.position.z = prevCameraInfoPosition.z;
                 }
                 else{
-                    camera.position.x = prevCameraInfoPositionX;
-                    camera.position.z = prevCameraInfoPositionZ;
+                    camera.position.x = prevCameraInfoPosition.x;
+                    camera.position.z = prevCameraInfoPosition.z;
                 }
             }
         }
@@ -388,12 +354,50 @@ function animate() {
         lookAtBall = false;
         basketball.material.color.set( 0xffa500);
     }
+
+    if(!grabBall){
+        if(basketball.position.y > 2){
+            basketball.position.y += ballVelocityY;
+            ballVelocityY += acceleration;
+        }
+        else{
+            basketball.position.y = 2;
+            ballVelocityY = 0;
+            shotAlreadyMadeDown = false;
+        }
+        if(!shotAlreadyMadeDown && (withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, -47, 2, 28, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, 43, 2, 28, 47))){
+            shotsMade += 1;
+            console.log("shot made");
+            document.getElementById('buckets-made').innerHTML = shotsMade;
+            shotAlreadyMadeDown = true;
+        }
+    }
+    else{
+        ballVelocityY = 0;
+        shotAlreadyMadeDown = false;
+    }
 }
 
 
 function threeDistance(x1, y1, z1, x2, y2, z2){
     var distance = Math.sqrt(Math.pow((x2 - x1),2) + Math.pow((y2 - y1),2) + Math.pow((z2 - z1),2));
     return distance;
+}
+
+function faceGreaterThanItself(pos1, pos2, error){
+    return Math.abs(pos1) == Math.max(Math.abs(pos1),Math.abs(pos2) + error);
+}
+
+function rotationDisplacementAxis(radius, direction, orginDirection){
+    return radius * (direction - orginDirection);
+}
+
+function grabDisplacementCoord(rotationDisplacement, prevCoordObject, nowCoordCam, prevCoordCam){
+    return rotationDisplacement + prevCoordObject + nowCoordCam - prevCoordCam;
+}
+
+function withinTriggerPoint(px, py, pz, testx1, testy1, testz1, testx2, testy2, testz2){
+    return ((px > testx1 && px < testx2) && (py > testy1 && py < testy2) && (pz > testz1 && pz < testz2));
 }
 
 

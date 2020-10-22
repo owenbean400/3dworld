@@ -73,6 +73,13 @@
         top: calc(50% - 10px);
         left: calc(50% - 6px);
     }
+    #buckets {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: white;
+        padding: 4px 6px;
+    }
 
 </style>
     </head>
@@ -95,6 +102,9 @@
             <div id="cursor-bottom"></div>
             <div id="cursor-left"></div>
             <div id="cursor-right"></div>
+        </div>
+        <div id="buckets">
+            Shots Made in Basket: <span id="buckets-made">0</span>
         </div>
         <script type="module" src="./blocgame.js">
         </script>
