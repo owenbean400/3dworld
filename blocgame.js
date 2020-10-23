@@ -26,7 +26,6 @@ var grabBall = false;
 var ballHitGround = true;
 
 var personTriggerCame;
-var distanceBallCamera;
 
 var moveForward = false;
 var moveBackward = false;
@@ -49,11 +48,11 @@ function init() {
 
     //Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color( 0x999999 );
-    scene.fog = new THREE.Fog( 0x999999, 0, 750 );
+    scene.background = new THREE.Color( 0xffffff );
+    scene.fog = new THREE.Fog( 0x999999, 0, 250 );
 
     //Light Global
-    var light = new THREE.AmbientLight( 0x404040, 2 ); // soft white light
+    var light = new THREE.AmbientLight( 0xdddddd, 0.75 ); // soft white light
     scene.add( light );
 
     //Direct Light Global Shadow
@@ -357,10 +356,18 @@ function animate() {
     if(intersects.length > 0 || grabBall){
         lookAtBall = true;
         basketball.material.color.set( 0xffff00);
+        document.getElementById('cursor-top').style.backgroundColor = "#00ff00";
+        document.getElementById('cursor-bottom').style.backgroundColor = "#00ff00";
+        document.getElementById('cursor-left').style.backgroundColor = "#00ff00";
+        document.getElementById('cursor-right').style.backgroundColor = "#00ff00";
     }
     else{
         lookAtBall = false;
         basketball.material.color.set( 0xffa500);
+        document.getElementById('cursor-top').style.backgroundColor = "#00cc00";
+        document.getElementById('cursor-bottom').style.backgroundColor = "#00cc00";
+        document.getElementById('cursor-left').style.backgroundColor = "#00cc00";
+        document.getElementById('cursor-right').style.backgroundColor = "#00cc00";
     }
 
     if(!grabBall){
@@ -383,16 +390,22 @@ function animate() {
             ballHitGround = true;
             shotAlreadyMadeDown = false;
         }
-        if(!shotAlreadyMadeDown && (withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, -47, 2, 28, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 24, 43, 2, 28, 47))){
-            shotsMade += 1;
-            shotAlreadyMadeDown = true;
-            shotsInRow += 1;
-            if(shotsInRow > shotsMax){
-                shotsMax = shotsInRow;
+        if(withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, -47, 2, 29, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, 43, 2, 29, 47)){
+            if(!shotAlreadyMadeDown){
+                shotsMade += 1;
+                shotAlreadyMadeDown = true;
+                shotsInRow += 1;
+                if(shotsInRow > shotsMax){
+                    shotsMax = shotsInRow;
+                }
+                document.getElementById('buckets-made').innerHTML = shotsMade;
+                document.getElementById('shots-row').innerHTML = shotsInRow;
+                document.getElementById('shots-max').innerHTML = shotsMax;        
+                ballVelocityX = 0;
+                ballVelocityZ = 0;
+                ballVelocityY = 0;
             }
-            document.getElementById('buckets-made').innerHTML = shotsMade;
-            document.getElementById('shots-row').innerHTML = shotsInRow;
-            document.getElementById('shots-max').innerHTML = shotsMax;
+
         }
     }
     else{
@@ -416,6 +429,9 @@ function animate() {
         ballVelocityZ = 0;
         basketball.position.z = 0;
         }
+    }
+    if((withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -10, 22, -50, 10, 36, -46) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -10, 22, 48, 10, 36, 52))){
+        ballVelocityZ *= -1;
     }
 }
 
