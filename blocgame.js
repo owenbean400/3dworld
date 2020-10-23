@@ -72,8 +72,6 @@ function init() {
     directionalLight.shadow.camera.right = d;
     directionalLight.shadow.camera.top = d;
     directionalLight.shadow.camera.bottom = - d;
-    var helper = new THREE.CameraHelper( directionalLight.shadow.camera );
-    scene.add( helper );
     scene.add( directionalLight );  
 
     //Pointer Lock
