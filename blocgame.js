@@ -390,7 +390,7 @@ function animate() {
             ballHitGround = true;
             shotAlreadyMadeDown = false;
         }
-        if(withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, -47, 2, 29, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, 43, 2, 29, 47)){
+        if(withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, -47, 2, 30, -43) || withinTriggerPoint(basketball.position.x, basketball.position.y, basketball.position.z, -2, 25, 43, 2, 30, 47)){
             if(!shotAlreadyMadeDown){
                 shotsMade += 1;
                 shotAlreadyMadeDown = true;
